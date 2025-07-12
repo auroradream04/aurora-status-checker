@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { StatusIndicator } from '../../../components/monitors/status-indicator'
 import { Modal } from '../../../components/ui/modal'
 import { AddMonitorForm } from '../../../components/monitors/add-monitor-form'
+import { createClient } from '../../../lib/supabase-client'
 
 interface Monitor {
   id: string
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
   const [isScrolled, setIsScrolled] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -78,6 +80,27 @@ export default function DashboardPage() {
     fetchMonitors()
   }
 
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST' })
+      if (!response.ok) {
+        throw new Error('Failed to logout')
+      }
+      
+      // Also sign out from client-side
+      const supabase = createClient()
+      await supabase.auth.signOut()
+      
+      // Redirect to home or login page
+      router.push('/')
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to logout')
+      setIsLoggingOut(false)
+    }
+  }
+
   useEffect(() => {
     fetchMonitors()
   }, [])
@@ -117,8 +140,12 @@ export default function DashboardPage() {
             <button className="text-sm text-text-secondary hover:text-text-primary transition-colors font-medium">
               Account
             </button>
-            <button className="text-sm text-text-secondary hover:text-error transition-colors font-medium">
-              Logout
+            <button 
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="text-sm text-text-secondary hover:text-error transition-colors font-medium disabled:opacity-50"
+            >
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
             </button>
           </div>
         </div>

@@ -14,10 +14,18 @@ export async function createServerClient() {
           return cookieStore.get(name)?.value
         },
         set(name: string, value: string, options: Partial<CookieOptions>) {
-          cookieStore.set({ name, value, ...options })
+          try {
+            cookieStore.set({ name, value, ...options })
+          } catch {
+            // Ignore cookie setting errors in read-only contexts
+          }
         },
         remove(name: string, options: Partial<CookieOptions>) {
-          cookieStore.set({ name, value: '', ...options })
+          try {
+            cookieStore.set({ name, value: '', ...options })
+          } catch {
+            // Ignore cookie setting errors in read-only contexts
+          }
         },
       },
     }
