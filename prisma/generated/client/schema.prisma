@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User management (synced with Supabase Auth)
+model User {
+  id        String    @id // Supabase Auth UUID
+  email     String    @unique
+  name      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  monitors  Monitor[]
+
+  @@map("users")
+}
+
+// Website monitors
+model Monitor {
+  id        String     @id @default(cuid())
+  name      String
+  url       String
+  interval  Int        @default(1800) // 30 minutes in seconds
+  isActive  Boolean    @default(true)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checks    Check[]
+  incidents Incident[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+  @@map("monitors")
+}
+
+// Status check results
+model Check {
+  id           String      @id @default(cuid())
+  monitorId    String
+  monitor      Monitor     @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  status       CheckStatus
+  statusCode   Int?
+  responseTime Int? // milliseconds
+  error        String?
+  checkedAt    DateTime    @default(now())
+
+  @@index([monitorId, checkedAt])
+  @@map("checks")
+}
+
+// Incident tracking
+model Incident {
+  id         String    @id @default(cuid())
+  monitorId  String
+  monitor    Monitor   @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  startedAt  DateTime  @default(now())
+  resolvedAt DateTime?
+  status     String // "ongoing", "resolved"
+  checks     String[] // Array of check IDs related to this incident
+
+  @@index([monitorId, status])
+  @@map("incidents")
+}
+
+enum CheckStatus {
+  UP
+  DOWN
+  WARNING
+  UNKNOWN
+}
