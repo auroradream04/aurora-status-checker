@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { StatusIndicator } from '../../../components/monitors/status-indicator'
 import { Modal } from '../../../components/ui/modal'
 import { AddMonitorForm } from '../../../components/monitors/add-monitor-form'
@@ -101,25 +100,18 @@ export default function DashboardPage() {
         isScrolled ? 'header-solid' : 'header-transparent'
       }`}>
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-accent rounded-md flex items-center justify-center" style={{ boxShadow: 'var(--glow-accent-soft)' }}>
-              <div className="w-2 h-2 bg-white rounded-sm"></div>
+          <div className="flex items-center gap-3">
+            <div className="w-6 h-6 bg-accent rounded-md flex items-center justify-center" style={{ boxShadow: 'var(--glow-accent-soft)' }}>
+              <div className="w-3 h-3 bg-white rounded-sm"></div>
             </div>
-            <h1 className="text-sm text-text-primary font-medium tracking-tight">Aurora Status</h1>
+            <h1 className="text-base text-text-primary font-medium tracking-tight">Aurora Status</h1>
           </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={handleRefreshAll}
-              disabled={isRefreshing}
-              className="btn btn-ghost text-xs px-2 py-1 h-7 transition-all"
-            >
-              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          <div className="flex items-center gap-3">
+            <button className="text-sm text-text-secondary hover:text-text-primary transition-colors font-medium">
+              Account
             </button>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="btn btn-primary text-xs px-2.5 py-1 h-7 transition-all"
-            >
-              Add Monitor
+            <button className="text-sm text-text-secondary hover:text-error transition-colors font-medium">
+              Logout
             </button>
           </div>
         </div>
@@ -153,8 +145,25 @@ export default function DashboardPage() {
         <div className="glass rounded-lg p-5">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-base text-text-primary font-medium tracking-tight">Monitors</h2>
-            <div className="text-xs text-text-muted font-medium">
-              {monitors.length} total
+            <div className="flex items-center gap-3">
+              <div className="text-xs text-text-muted font-medium">
+                {monitors.length} total
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleRefreshAll}
+                  disabled={isRefreshing}
+                  className="btn btn-ghost text-xs px-3 py-1.5 h-8 transition-all"
+                >
+                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                </button>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 text-white text-xs px-2.5 py-1 h-7 rounded-md font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg shadow-accent/20"
+                >
+                  Add Monitor
+                </button>
+              </div>
             </div>
           </div>
 
@@ -167,7 +176,7 @@ export default function DashboardPage() {
               <div className="text-text-secondary mb-3 text-sm">No monitors yet</div>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="btn btn-primary text-xs px-4 py-2"
+                className="bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 text-white text-xs px-3 py-1.5 rounded-md font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg shadow-accent/20"
               >
                 Add your first monitor
               </button>
