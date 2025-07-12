@@ -61,113 +61,147 @@ export async function POST(
 async function performStatusCheck(url: string) {
   const startTime = Date.now()
   
-  try {
-    // Normalize URL - ensure it has a protocol
-    let normalizedUrl = url.trim()
-    if (!normalizedUrl.match(/^https?:\/\//)) {
-      normalizedUrl = `https://${normalizedUrl}`
-    }
-    
-    const response = await fetch(normalizedUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Aurora Status Checker/1.0',
-      },
-      signal: AbortSignal.timeout(30000), // 30 second timeout
-    })
-
-    const responseTime = Date.now() - startTime
-    const statusCode = response.status
-
-    let status: 'UP' | 'DOWN' | 'WARNING'
-    
-    if (statusCode >= 200 && statusCode < 300) {
-      status = 'UP'
-    } else if (statusCode >= 300 && statusCode < 400) {
-      status = 'WARNING'  // Redirects
-    } else if (statusCode >= 400 && statusCode < 600) {
-      status = 'WARNING'  // Client/Server errors - server is responding but with issues
-    } else {
-      status = 'DOWN'     // Only for unexpected status codes
-    }
-
-    // Check for slow response (warning if > 3 seconds)
-    if (responseTime > 3000 && status === 'UP') {
-      status = 'WARNING'
-    }
-
-    return {
-      status,
-      responseTime,
-      statusCode,
-      errorMessage: null,
-    }
-  } catch (error) {
-    const responseTime = Date.now() - startTime
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    
-    // Determine if this is a SSL/certificate issue or actual server down
-    let status: 'DOWN' | 'WARNING' = 'DOWN'
-    
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase()
+  // Normalize URL - ensure it has a protocol
+  let normalizedUrl = url.trim()
+  if (!normalizedUrl.match(/^https?:\/\//)) {
+    normalizedUrl = `https://${normalizedUrl}`
+  }
+  
+  // Try HTTPS first, then HTTP as fallback
+  const urlsToTry = [
+    normalizedUrl,
+    // If HTTPS fails and original didn't have protocol, try HTTP
+    ...((!url.trim().match(/^https?:\/\//)) ? [normalizedUrl.replace('https://', 'http://')] : [])
+  ]
+  
+  let lastError: Error | null = null
+  
+  for (const tryUrl of urlsToTry) {
+    try {
+      const response = await fetch(tryUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Aurora Status Checker/1.0',
+        },
+        signal: AbortSignal.timeout(30000), // 30 second timeout
+      })
       
-      // SSL/Certificate related errors should be WARNING
-      if (
-        message.includes('certificate') ||
-        message.includes('ssl') ||
-        message.includes('tls') ||
-        message.includes('self-signed') ||
-        message.includes('expired') ||
-        message.includes('untrusted') ||
-        message.includes('bad certificate') ||
-        message.includes('cert') ||
-        message.includes('handshake') ||
-        message.includes('protocol') ||
-        message.includes('unable to verify') ||
-        message.includes('hostname mismatch') ||
-        // Mixed content and protocol issues
-        message.includes('mixed content') ||
-        message.includes('insecure request') ||
-        message.includes('protocol error') ||
-        message.includes('fetch failed') ||
-        // HTTP errors that indicate server is responding but with issues
-        message.includes('404') ||
-        message.includes('403') ||
-        message.includes('401') ||
-        message.includes('429') ||
-        message.includes('500') ||
-        message.includes('502') ||
-        message.includes('503') ||
-        message.includes('504') ||
-        // DNS resolution but connection issues
-        message.includes('connection refused') ||
-        message.includes('connection reset') ||
-        message.includes('connection timeout') ||
-        message.includes('network unreachable')
-      ) {
+      const responseTime = Date.now() - startTime
+      const statusCode = response.status
+
+      let status: 'UP' | 'DOWN' | 'WARNING'
+      
+      if (statusCode >= 200 && statusCode < 300) {
+        status = 'UP'
+      } else if (statusCode >= 300 && statusCode < 400) {
+        status = 'WARNING'  // Redirects
+      } else if (statusCode >= 400 && statusCode < 600) {
+        status = 'WARNING'  // Client/Server errors - server is responding but with issues
+      } else {
+        status = 'DOWN'     // Only for unexpected status codes
+      }
+
+      // Check for slow response (warning if > 3 seconds)
+      if (responseTime > 3000 && status === 'UP') {
         status = 'WARNING'
       }
       
-      // Only true connection failures should be DOWN
-      // These indicate the server/domain is completely unreachable
-      if (
-        message.includes('enotfound') ||
-        message.includes('getaddrinfo') ||
-        message.includes('name not resolved') ||
-        message.includes('no such host') ||
-        message.includes('network is unreachable') ||
-        message.includes('host unreachable')
-      ) {
-        status = 'DOWN'
+      // If we used HTTP fallback, mark as WARNING
+      if (tryUrl.startsWith('http://') && !url.trim().startsWith('http://')) {
+        status = 'WARNING'
+      }
+
+      return {
+        status,
+        responseTime,
+        statusCode,
+        errorMessage: null,
+      }
+    } catch (error) {
+      lastError = error as Error
+      // Continue to next URL if available
+      if (tryUrl === urlsToTry[urlsToTry.length - 1]) {
+        // This was the last attempt, handle the error
+        break
       }
     }
-    
-    return {
-      status,
-      responseTime,
-      statusCode: null,
-      errorMessage,
+  }
+  
+  // If we get here, all attempts failed
+  const responseTime = Date.now() - startTime
+  const errorMessage = lastError instanceof Error ? lastError.message : 'Unknown error'
+  
+  // Try to extract status code from error message
+  let statusCode: number | null = null
+  if (lastError instanceof Error) {
+    const statusMatch = lastError.message.match(/status (?:code )?([0-9]{3})/i)
+    if (statusMatch) {
+      statusCode = parseInt(statusMatch[1])
     }
   }
+  
+  // Determine if this is a SSL/certificate issue or actual server down
+  let status: 'DOWN' | 'WARNING' = 'DOWN'
+  
+  if (lastError instanceof Error) {
+    const message = lastError.message.toLowerCase()
+    
+    // SSL/Certificate related errors should be WARNING
+    if (
+      message.includes('certificate') ||
+      message.includes('ssl') ||
+      message.includes('tls') ||
+      message.includes('self-signed') ||
+      message.includes('expired') ||
+      message.includes('untrusted') ||
+      message.includes('bad certificate') ||
+      message.includes('cert') ||
+      message.includes('handshake') ||
+      message.includes('protocol') ||
+      message.includes('unable to verify') ||
+      message.includes('hostname mismatch') ||
+      // Mixed content and protocol issues
+      message.includes('mixed content') ||
+      message.includes('insecure request') ||
+      message.includes('protocol error') ||
+      message.includes('fetch failed') ||
+      // HTTP errors that indicate server is responding but with issues
+      message.includes('404') ||
+      message.includes('403') ||
+      message.includes('401') ||
+      message.includes('429') ||
+      message.includes('500') ||
+      message.includes('502') ||
+      message.includes('503') ||
+      message.includes('504') ||
+      // DNS resolution but connection issues
+      message.includes('connection refused') ||
+      message.includes('connection reset') ||
+      message.includes('connection timeout') ||
+      message.includes('network unreachable')
+    ) {
+      status = 'WARNING'
+    }
+    
+    // Only true connection failures should be DOWN
+    // These indicate the server/domain is completely unreachable
+    if (
+      message.includes('enotfound') ||
+      message.includes('getaddrinfo') ||
+      message.includes('name not resolved') ||
+      message.includes('no such host') ||
+      message.includes('network is unreachable') ||
+      message.includes('host unreachable')
+    ) {
+      status = 'DOWN'
+    }
+  }
+  
+  return {
+    status,
+    responseTime,
+    statusCode,
+    errorMessage,
+  }
+
 }
