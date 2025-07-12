@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { StatusIndicator } from '../../../components/monitors/status-indicator'
@@ -25,6 +26,7 @@ interface Monitor {
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [monitors, setMonitors] = useState<Monitor[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -202,7 +204,11 @@ export default function DashboardPage() {
                           {lastCheck ? lastCheck.toLocaleTimeString() : 'Never checked'}
                         </div>
                       </div>
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => router.push(`/dashboard/monitors/${monitor.id}`)}
+                      >
                         Details
                       </Button>
                     </div>

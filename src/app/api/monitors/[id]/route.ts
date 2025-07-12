@@ -4,9 +4,9 @@ import { prisma } from '../../../../../lib/prisma'
 import { z } from 'zod'
 
 const updateMonitorSchema = z.object({
-  name: z.string().min(1, 'Name is required').optional(),
-  url: z.string().url('Valid URL is required').optional(),
-  interval: z.number().min(1).max(60).optional(),
+  name: z.string().min(1, 'Name is required').max(255, 'Name must be less than 255 characters').optional(),
+  url: z.string().url('Please enter a valid URL').optional(),
+  interval: z.number().min(1, 'Interval must be at least 1 minute').max(60, 'Interval must be less than 60 minutes').optional(),
 })
 
 export async function GET(
@@ -56,29 +56,41 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const validatedData = updateMonitorSchema.parse(body)
+    const result = updateMonitorSchema.safeParse(body)
 
-    const monitor = await prisma.monitor.updateMany({
+    if (!result.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', issues: result.error.issues },
+        { status: 400 }
+      )
+    }
+
+    // Verify monitor exists and belongs to user
+    const existingMonitor = await prisma.monitor.findFirst({
       where: { 
         id,
         user: { email: user.email! }
-      },
-      data: validatedData
+      }
     })
 
-    if (monitor.count === 0) {
+    if (!existingMonitor) {
       return NextResponse.json({ error: 'Monitor not found' }, { status: 404 })
     }
 
-    const updatedMonitor = await prisma.monitor.findUnique({
-      where: { id }
+    // Update the monitor
+    const monitor = await prisma.monitor.update({
+      where: { id },
+      data: result.data,
+      include: {
+        checks: {
+          orderBy: { checkedAt: 'desc' },
+          take: 50
+        }
+      }
     })
 
-    return NextResponse.json(updatedMonitor)
+    return NextResponse.json(monitor)
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.issues }, { status: 400 })
-    }
     console.error('Error updating monitor:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
