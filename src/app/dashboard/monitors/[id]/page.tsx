@@ -2,10 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '../../../../../components/ui/card'
-import { Button } from '../../../../../components/ui/button'
 import { StatusIndicator } from '../../../../../components/monitors/status-indicator'
-import { Badge } from '../../../../../components/ui/badge'
 import { Modal } from '../../../../../components/ui/modal'
 import { EditMonitorForm } from '../../../../../components/monitors/edit-monitor-form'
 
@@ -16,6 +13,11 @@ interface Monitor {
   interval: number
   createdAt: string
   updatedAt: string
+  category?: {
+    id: string
+    name: string
+    color: string
+  }
   checks: Array<{
     id: string
     status: 'UP' | 'DOWN' | 'WARNING'
@@ -34,6 +36,7 @@ export default function MonitorDetailPage() {
   const [monitor, setMonitor] = useState<Monitor | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [error, setError] = useState('')
 
@@ -78,6 +81,7 @@ export default function MonitorDetailPage() {
       return
     }
 
+    setIsDeleting(true)
     try {
       const response = await fetch(`/api/monitors/${monitorId}`, { 
         method: 'DELETE' 
@@ -85,9 +89,10 @@ export default function MonitorDetailPage() {
       if (!response.ok) {
         throw new Error('Failed to delete monitor')
       }
-      router.push('/dashboard/monitors')
+      router.push('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete monitor')
+      setIsDeleting(false)
     }
   }
 
@@ -132,22 +137,36 @@ export default function MonitorDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="text-center py-8">
-        <p className="text-text-secondary">Loading monitor details...</p>
+      <div className="min-h-screen bg-background">
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <div className="text-center py-12">
+            <div className="w-6 h-6 bg-accent rounded-full animate-pulse mx-auto mb-4"></div>
+            <p className="text-text-secondary">Loading monitor details...</p>
+          </div>
+        </div>
       </div>
     )
   }
 
   if (error || !monitor) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.back()}>
-            ← Back
-          </Button>
-        </div>
-        <div className="text-sm text-error bg-error/10 border border-error/20 rounded-md p-3">
-          {error || 'Monitor not found'}
+      <div className="min-h-screen bg-background">
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => router.back()}
+                className="btn btn-ghost text-sm px-3 py-2"
+              >
+                ← Back
+              </button>
+            </div>
+            <div className="glass rounded-lg p-6">
+              <div className="text-sm text-error">
+                {error || 'Monitor not found'}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -161,177 +180,187 @@ export default function MonitorDetailPage() {
   const createdAt = new Date(monitor.createdAt)
 
   return (
-    <div className="space-y-8">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.back()}>
-            ← Back
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-primary">{monitor.name}</h1>
-            <p className="text-text-secondary mt-1">{monitor.url}</p>
+      <div className="sticky top-0 z-50 header-solid">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => router.back()}
+              className="btn btn-ghost text-sm px-3 py-2"
+            >
+              ← Back
+            </button>
+            <div className="flex items-center gap-3">
+              <StatusIndicator status={status} />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg font-semibold text-text-primary tracking-tight">{monitor.name}</h1>
+                  {monitor.category && (
+                    <span 
+                      className="px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide"
+                      style={{ 
+                        backgroundColor: `${monitor.category.color}20`,
+                        color: monitor.category.color,
+                        border: `1px solid ${monitor.category.color}30`
+                      }}
+                    >
+                      {monitor.category.name}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-text-secondary">{monitor.url}</p>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline"
-            onClick={handleRefreshMonitor}
-            disabled={isRefreshing}
-          >
-            {isRefreshing ? 'Checking...' : 'Check Now'}
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={() => setShowEditModal(true)}
-          >
-            Edit
-          </Button>
-          <Button 
-            variant="ghost" 
-            onClick={handleDeleteMonitor}
-          >
-            Delete
-          </Button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRefreshMonitor}
+              disabled={isRefreshing}
+              className="btn btn-ghost text-xs px-3 py-1.5 h-8 transition-all disabled:opacity-50"
+            >
+              {isRefreshing ? 'Checking...' : 'Check Now'}
+            </button>
+            <button
+              onClick={() => setShowEditModal(true)}
+              className="btn btn-ghost text-xs px-3 py-1.5 h-8 transition-all"
+            >
+              Edit
+            </button>
+            <button
+              onClick={handleDeleteMonitor}
+              disabled={isDeleting}
+              className="btn btn-ghost text-xs px-3 py-1.5 h-8 transition-all text-error hover:text-error disabled:opacity-50"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="text-sm text-error bg-error/10 border border-error/20 rounded-md p-3">
-          {error}
-        </div>
-      )}
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 p-4 bg-error/10 border border-error/20 rounded-lg">
+            <div className="text-sm text-error">{error}</div>
+          </div>
+        )}
 
-      {/* Status Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Current Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        {/* Status Overview */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="glass rounded-lg p-6 hover:glass-strong transition-all duration-300 border-l-2 border-success/30">
+            <div className="text-xs text-text-muted mb-3 font-medium tracking-wide uppercase">Current Status</div>
             <div className="flex items-center gap-3">
-              <StatusIndicator status={status} size="lg" />
-              <Badge 
-                variant={
-                  status === 'UP' ? 'success' : 
-                  status === 'WARNING' ? 'warning' : 'error'
-                }
-              >
+              <div className={`text-2xl font-bold ${
+                status === 'UP' ? 'text-success' : 
+                status === 'WARNING' ? 'text-warning' : 'text-error'
+              }`}>
                 {status}
-              </Badge>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Response Time
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">
+          <div className="glass rounded-lg p-6 hover:glass-strong transition-all duration-300 border-l-2 border-accent/30">
+            <div className="text-xs text-text-muted mb-3 font-medium tracking-wide uppercase">Response Time</div>
+            <div className="text-2xl font-bold text-text-primary">
               {responseTime ? `${responseTime}ms` : 'N/A'}
             </div>
             {averageResponseTime && (
-              <div className="text-sm text-text-secondary">
+              <div className="text-xs text-text-secondary mt-1">
                 Avg: {averageResponseTime}ms
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Uptime (24h)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <div className="glass rounded-lg p-6 hover:glass-strong transition-all duration-300 border-l-2 border-success/30">
+            <div className="text-xs text-text-muted mb-3 font-medium tracking-wide uppercase">Uptime (24h)</div>
             <div className="text-2xl font-bold text-success">{uptime}%</div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Check Interval
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">{monitor.interval}min</div>
-          </CardContent>
-        </Card>
-      </div>
+          <div className="glass rounded-lg p-6 hover:glass-strong transition-all duration-300 border-l-2 border-accent/30">
+            <div className="text-xs text-text-muted mb-3 font-medium tracking-wide uppercase">Check Interval</div>
+            <div className="text-2xl font-bold text-text-primary">{monitor.interval}min</div>
+          </div>
+        </div>
 
-      {/* Monitor Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Monitor Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Monitor Information */}
+        <div className="glass rounded-lg p-5 mb-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-base text-text-primary font-medium tracking-tight">Monitor Information</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
-              <h3 className="font-medium text-text-primary mb-2">Basic Details</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">Name:</span>
-                  <span className="text-text-primary">{monitor.name}</span>
+              <h3 className="text-sm font-medium text-text-primary mb-4 uppercase tracking-wide">Basic Details</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center py-2 border-b border-border/30">
+                  <span className="text-xs text-text-secondary font-medium uppercase tracking-wide">Name</span>
+                  <span className="text-sm text-text-primary font-medium">{monitor.name}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">URL:</span>
-                  <span className="text-text-primary">{monitor.url}</span>
+                <div className="flex justify-between items-center py-2 border-b border-border/30">
+                  <span className="text-xs text-text-secondary font-medium uppercase tracking-wide">URL</span>
+                  <span className="text-sm text-text-primary font-medium truncate max-w-xs">{monitor.url}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">Check Interval:</span>
-                  <span className="text-text-primary">{monitor.interval} minutes</span>
+                <div className="flex justify-between items-center py-2 border-b border-border/30">
+                  <span className="text-xs text-text-secondary font-medium uppercase tracking-wide">Interval</span>
+                  <span className="text-sm text-text-primary font-medium">{monitor.interval} minutes</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">Created:</span>
-                  <span className="text-text-primary">{createdAt.toLocaleDateString()}</span>
+                <div className="flex justify-between items-center py-2 border-b border-border/30">
+                  <span className="text-xs text-text-secondary font-medium uppercase tracking-wide">Created</span>
+                  <span className="text-sm text-text-primary font-medium">{createdAt.toLocaleDateString()}</span>
                 </div>
+                {monitor.category && (
+                  <div className="flex justify-between items-center py-2 border-b border-border/30">
+                    <span className="text-xs text-text-secondary font-medium uppercase tracking-wide">Category</span>
+                    <span 
+                      className="px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide"
+                      style={{ 
+                        backgroundColor: `${monitor.category.color}20`,
+                        color: monitor.category.color,
+                        border: `1px solid ${monitor.category.color}30`
+                      }}
+                    >
+                      {monitor.category.name}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
             <div>
-              <h3 className="font-medium text-text-primary mb-2">Latest Check</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">Status:</span>
-                  <Badge 
-                    variant={
-                      status === 'UP' ? 'success' : 
-                      status === 'WARNING' ? 'warning' : 'error'
-                    }
-                  >
+              <h3 className="text-sm font-medium text-text-primary mb-4 uppercase tracking-wide">Latest Check</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center py-2 border-b border-border/30">
+                  <span className="text-xs text-text-secondary font-medium uppercase tracking-wide">Status</span>
+                  <span className={`text-sm font-bold ${
+                    status === 'UP' ? 'text-success' : 
+                    status === 'WARNING' ? 'text-warning' : 'text-error'
+                  }`}>
                     {status}
-                  </Badge>
+                  </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">Response Time:</span>
-                  <span className="text-text-primary">
+                <div className="flex justify-between items-center py-2 border-b border-border/30">
+                  <span className="text-xs text-text-secondary font-medium uppercase tracking-wide">Response Time</span>
+                  <span className="text-sm text-text-primary font-medium">
                     {responseTime ? `${responseTime}ms` : 'N/A'}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">Status Code:</span>
-                  <span className="text-text-primary">
+                <div className="flex justify-between items-center py-2 border-b border-border/30">
+                  <span className="text-xs text-text-secondary font-medium uppercase tracking-wide">Status Code</span>
+                  <span className="text-sm text-text-primary font-medium">
                     {monitor.checks?.[0]?.statusCode || 'N/A'}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">Last Checked:</span>
-                  <span className="text-text-primary">
+                <div className="flex justify-between items-center py-2 border-b border-border/30">
+                  <span className="text-xs text-text-secondary font-medium uppercase tracking-wide">Last Checked</span>
+                  <span className="text-sm text-text-primary font-medium">
                     {lastCheck ? lastCheck.toLocaleString() : 'Never'}
                   </span>
                 </div>
                 {monitor.checks?.[0]?.error && (
-                  <div className="pt-2">
-                    <span className="text-text-secondary">Error:</span>
-                    <div className="text-error text-xs mt-1 p-2 bg-error/10 rounded">
+                  <div className="pt-3">
+                    <div className="text-xs text-text-secondary font-medium uppercase tracking-wide mb-2">Error</div>
+                    <div className="text-error text-xs p-3 bg-error/10 border border-error/20 rounded-lg font-mono">
                       {monitor.checks[0].error}
                     </div>
                   </div>
@@ -339,52 +368,69 @@ export default function MonitorDetailPage() {
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Recent Checks History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Check History</CardTitle>
-        </CardHeader>
-        <CardContent>
+        {/* Recent Checks History */}
+        <div className="glass rounded-lg p-5">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-base text-text-primary font-medium tracking-tight">Recent Check History</h2>
+            <div className="text-xs text-text-muted font-medium">
+              Last {monitor.checks?.length || 0} checks
+            </div>
+          </div>
+
           {monitor.checks && monitor.checks.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {monitor.checks.slice(0, 10).map((check) => (
                 <div 
                   key={check.id}
-                  className="flex items-center justify-between p-3 border border-border rounded-lg"
+                  className="flex items-center justify-between p-4 glass rounded-md hover:glass-strong transition-all duration-300"
                 >
                   <div className="flex items-center gap-3">
                     <StatusIndicator status={check.status} size="sm" />
-                    <span className="text-sm font-medium">
-                      {new Date(check.checkedAt).toLocaleString()}
-                    </span>
+                    <div>
+                      <div className="text-sm font-medium text-text-primary">
+                        {new Date(check.checkedAt).toLocaleString()}
+                      </div>
+                      {check.error && (
+                        <div className="text-xs text-error mt-1 truncate max-w-xs">
+                          {check.error}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="text-text-secondary">
-                      {check.responseTime ? `${check.responseTime}ms` : 'N/A'}
-                    </span>
-                    <span className="text-text-secondary">
-                      {check.statusCode || 'N/A'}
-                    </span>
-                    {check.error && (
-                      <span className="text-error text-xs">
-                        Error
-                      </span>
-                    )}
+                  <div className="flex items-center gap-6 text-sm">
+                    <div className="text-right">
+                      <div className="text-xs text-text-muted font-medium uppercase tracking-wide">Response</div>
+                      <div className="text-sm text-text-primary font-medium">
+                        {check.responseTime ? `${check.responseTime}ms` : 'N/A'}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-text-muted font-medium uppercase tracking-wide">Code</div>
+                      <div className="text-sm text-text-primary font-medium">
+                        {check.statusCode || 'N/A'}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-text-secondary">
-              No checks performed yet
+            <div className="text-center py-12">
+              <div className="text-text-secondary mb-3 text-sm">No checks performed yet</div>
+              <button
+                onClick={handleRefreshMonitor}
+                disabled={isRefreshing}
+                className="bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 text-white text-xs px-3 py-1.5 rounded-md font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg shadow-accent/20 disabled:opacity-50"
+              >
+                {isRefreshing ? 'Checking...' : 'Run first check'}
+              </button>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Edit Monitor Modal */}
       {monitor && (
