@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { getUser } from '../../../lib/supabase-server'
 import { DashboardHeader } from '../../../components/dashboard/dashboard-header'
 
@@ -9,7 +10,7 @@ export default async function DashboardLayout({
   const user = await getUser()
 
   if (!user) {
-    return null // Will be redirected by middleware
+    redirect('/login')
   }
 
   return (
