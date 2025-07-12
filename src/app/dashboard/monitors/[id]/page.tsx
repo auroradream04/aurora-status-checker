@@ -28,6 +28,68 @@ interface Monitor {
   }>
 }
 
+// Helper function to format error messages for better readability
+function formatErrorMessage(error: string): string {
+  // Common error patterns and their user-friendly explanations
+  const errorMap: { [key: string]: string } = {
+    'fetch failed': 'Connection failed - server may be unreachable or using unsupported SSL',
+    'certificate': 'SSL certificate issue - certificate may be expired, invalid, or self-signed',
+    'ssl': 'SSL/TLS connection error - secure connection could not be established',
+    'tls': 'TLS handshake failed - secure connection negotiation failed',
+    'self-signed': 'Self-signed certificate detected - certificate not trusted by default',
+    'expired': 'SSL certificate expired - certificate is no longer valid',
+    'untrusted': 'Untrusted certificate - certificate not issued by recognized authority',
+    'hostname mismatch': 'Certificate hostname mismatch - certificate not valid for this domain',
+    'connection refused': 'Connection refused - server actively rejected the connection',
+    'connection reset': 'Connection reset - server unexpectedly closed the connection',
+    'connection timeout': 'Connection timeout - server took too long to respond',
+    'network unreachable': 'Network unreachable - routing issue or network down',
+    'enotfound': 'Domain not found - DNS resolution failed for this domain',
+    'getaddrinfo': 'DNS lookup failed - unable to resolve domain name to IP address',
+    'name not resolved': 'DNS resolution failed - domain name could not be resolved',
+    'no such host': 'Host not found - domain does not exist or DNS is misconfigured'
+  }
+
+  const lowerError = error.toLowerCase()
+  
+  // Find matching error pattern
+  for (const [pattern, explanation] of Object.entries(errorMap)) {
+    if (lowerError.includes(pattern)) {
+      return `${explanation} (${error})`
+    }
+  }
+  
+  // Extract status codes and provide context
+  const statusMatch = error.match(/(?:status|code|error)\s*:?\s*([0-9]{3})/i)
+  if (statusMatch) {
+    const code = parseInt(statusMatch[1])
+    const statusExplanations: { [key: number]: string } = {
+      400: 'Bad Request - server cannot process the request',
+      401: 'Unauthorized - authentication required',
+      403: 'Forbidden - access denied to this resource',
+      404: 'Not Found - requested resource does not exist',
+      405: 'Method Not Allowed - HTTP method not supported',
+      408: 'Request Timeout - server timed out waiting for request',
+      429: 'Too Many Requests - rate limit exceeded',
+      500: 'Internal Server Error - server encountered an error',
+      502: 'Bad Gateway - invalid response from upstream server',
+      503: 'Service Unavailable - server temporarily overloaded',
+      504: 'Gateway Timeout - upstream server timed out'
+    }
+    
+    if (statusExplanations[code]) {
+      return `HTTP ${code}: ${statusExplanations[code]}`
+    } else if (code >= 400 && code < 500) {
+      return `HTTP ${code}: Client error - request could not be processed`
+    } else if (code >= 500 && code < 600) {
+      return `HTTP ${code}: Server error - internal server problem`
+    }
+  }
+  
+  // Return original error if no pattern matches
+  return error
+}
+
 export default function MonitorDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -137,12 +199,10 @@ export default function MonitorDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <div className="text-center py-12">
-            <div className="w-6 h-6 bg-accent rounded-full animate-pulse mx-auto mb-4"></div>
-            <p className="text-text-secondary">Loading monitor details...</p>
-          </div>
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="text-center py-12">
+          <div className="w-6 h-6 bg-accent rounded-full animate-pulse mx-auto mb-4"></div>
+          <p className="text-text-secondary">Loading monitor details...</p>
         </div>
       </div>
     )
@@ -150,21 +210,19 @@ export default function MonitorDetailPage() {
 
   if (error || !monitor) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <div className="space-y-6">
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={() => router.back()}
-                className="btn btn-ghost text-sm px-3 py-2"
-              >
-                ← Back
-              </button>
-            </div>
-            <div className="glass rounded-lg p-6">
-              <div className="text-sm text-error">
-                {error || 'Monitor not found'}
-              </div>
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => router.back()}
+              className="btn btn-ghost text-sm px-3 py-2"
+            >
+              ← Back
+            </button>
+          </div>
+          <div className="glass rounded-lg p-6">
+            <div className="text-sm text-error">
+              {error || 'Monitor not found'}
             </div>
           </div>
         </div>
@@ -180,69 +238,67 @@ export default function MonitorDetailPage() {
   const createdAt = new Date(monitor.createdAt)
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 z-50 header-solid">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => router.back()}
-              className="btn btn-ghost text-sm px-3 py-2"
-            >
-              ← Back
-            </button>
-            <div className="flex items-center gap-3">
-              <StatusIndicator status={status} />
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-semibold text-text-primary tracking-tight">{monitor.name}</h1>
-                  {monitor.category && (
-                    <span 
-                      className="px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide"
-                      style={{ 
-                        backgroundColor: `${monitor.category.color}20`,
-                        color: monitor.category.color,
-                        border: `1px solid ${monitor.category.color}30`
-                      }}
-                    >
-                      {monitor.category.name}
-                    </span>
-                  )}
-                </div>
-                <a 
-                  href={monitor.url.match(/^https?:\/\//) ? monitor.url : `https://${monitor.url}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-text-secondary hover:text-accent transition-colors cursor-pointer"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {monitor.url}
-                </a>
+    <div>
+      {/* Page Header */}
+      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between border-b border-border/30 mb-6">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => router.back()}
+            className="btn btn-ghost text-sm px-3 py-2"
+          >
+            ← Back
+          </button>
+          <div className="flex items-center gap-3">
+            <StatusIndicator status={status} />
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-semibold text-text-primary tracking-tight">{monitor.name}</h1>
+                {monitor.category && (
+                  <span 
+                    className="px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide"
+                    style={{ 
+                      backgroundColor: `${monitor.category.color}20`,
+                      color: monitor.category.color,
+                      border: `1px solid ${monitor.category.color}30`
+                    }}
+                  >
+                    {monitor.category.name}
+                  </span>
+                )}
               </div>
+              <a 
+                href={monitor.url.match(/^https?:\/\//) ? monitor.url : `https://${monitor.url}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-text-secondary hover:text-accent transition-colors cursor-pointer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {monitor.url}
+              </a>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleRefreshMonitor}
-              disabled={isRefreshing}
-              className="btn btn-ghost text-xs px-3 py-1.5 h-8 transition-all disabled:opacity-50"
-            >
-              {isRefreshing ? 'Checking...' : 'Check Now'}
-            </button>
-            <button
-              onClick={() => setShowEditModal(true)}
-              className="btn btn-ghost text-xs px-3 py-1.5 h-8 transition-all"
-            >
-              Edit
-            </button>
-            <button
-              onClick={handleDeleteMonitor}
-              disabled={isDeleting}
-              className="btn btn-ghost text-xs px-3 py-1.5 h-8 transition-all text-error hover:text-error disabled:opacity-50"
-            >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </button>
-          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefreshMonitor}
+            disabled={isRefreshing}
+            className="btn btn-ghost text-xs px-3 py-1.5 h-8 transition-all disabled:opacity-50"
+          >
+            {isRefreshing ? 'Checking...' : 'Check Now'}
+          </button>
+          <button
+            onClick={() => setShowEditModal(true)}
+            className="btn btn-ghost text-xs px-3 py-1.5 h-8 transition-all"
+          >
+            Edit
+          </button>
+          <button
+            onClick={handleDeleteMonitor}
+            disabled={isDeleting}
+            className="btn btn-ghost text-xs px-3 py-1.5 h-8 transition-all text-error hover:text-error disabled:opacity-50"
+          >
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </button>
         </div>
       </div>
 
@@ -374,9 +430,9 @@ export default function MonitorDetailPage() {
                 </div>
                 {monitor.checks?.[0]?.error && (
                   <div className="pt-3">
-                    <div className="text-xs text-text-secondary font-medium uppercase tracking-wide mb-2">Error</div>
-                    <div className="text-error text-xs p-3 bg-error/10 border border-error/20 rounded-lg font-mono">
-                      {monitor.checks[0].error}
+                    <div className="text-xs text-text-secondary font-medium uppercase tracking-wide mb-2">Error Details</div>
+                    <div className="text-error text-xs p-3 bg-error/10 border border-error/20 rounded-lg font-mono leading-relaxed">
+                      {formatErrorMessage(monitor.checks[0].error)}
                     </div>
                   </div>
                 )}
@@ -408,8 +464,8 @@ export default function MonitorDetailPage() {
                         {new Date(check.checkedAt).toLocaleString()}
                       </div>
                       {check.error && (
-                        <div className="text-xs text-error mt-1 truncate max-w-xs">
-                          {check.error}
+                        <div className="text-xs text-error mt-1 max-w-xs">
+                          <div className="truncate">{formatErrorMessage(check.error)}</div>
                         </div>
                       )}
                     </div>

@@ -89,19 +89,34 @@ async function performStatusCheck(url: string) {
   ]
   
   let lastError: Error | null = null
+  let lastStatusCode: number | null = null
   
   for (const tryUrl of urlsToTry) {
     try {
-      const response = await fetch(tryUrl, {
-        method: 'GET',
-        headers: {
-          'User-Agent': 'Aurora Status Checker/1.0',
-        },
-        signal: AbortSignal.timeout(30000), // 30 second timeout
-      })
+      // First try HEAD request for better status code detection
+      let response: Response
+      try {
+        response = await fetch(tryUrl, {
+          method: 'HEAD',
+          headers: {
+            'User-Agent': 'Aurora Status Checker/1.0',
+          },
+          signal: AbortSignal.timeout(15000), // 15 second timeout for HEAD
+        })
+      } catch {
+        // If HEAD fails, try GET
+        response = await fetch(tryUrl, {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'Aurora Status Checker/1.0',
+          },
+          signal: AbortSignal.timeout(30000), // 30 second timeout for GET
+        })
+      }
       
       const responseTime = Date.now() - startTime
       const statusCode = response.status
+      lastStatusCode = statusCode // Store for potential fallback
 
       let status: 'UP' | 'DOWN' | 'WARNING'
       
@@ -133,6 +148,12 @@ async function performStatusCheck(url: string) {
       }
     } catch (error) {
       lastError = error as Error
+      
+      // Try to extract status code from fetch error response
+      if (error && typeof error === 'object' && 'status' in error) {
+        lastStatusCode = error.status as number
+      }
+      
       // Continue to next URL if available
       if (tryUrl === urlsToTry[urlsToTry.length - 1]) {
         // This was the last attempt, handle the error
@@ -145,12 +166,28 @@ async function performStatusCheck(url: string) {
   const responseTime = Date.now() - startTime
   const errorMessage = lastError instanceof Error ? lastError.message : 'Unknown error'
   
-  // Try to extract status code from error message
-  let statusCode: number | null = null
-  if (lastError instanceof Error) {
+  // Try to extract status code from error message if not already found
+  let statusCode: number | null = lastStatusCode
+  if (!statusCode && lastError instanceof Error) {
     const statusMatch = lastError.message.match(/status (?:code )?([0-9]{3})/i)
     if (statusMatch) {
       statusCode = parseInt(statusMatch[1])
+    }
+    
+    // Also try to extract from common error patterns
+    const errorPatterns = [
+      /HTTP\/\d\.\d\s+([0-9]{3})/i,
+      /response status ([0-9]{3})/i,
+      /error ([0-9]{3})/i,
+      /code:\s*([0-9]{3})/i
+    ]
+    
+    for (const pattern of errorPatterns) {
+      const match = lastError.message.match(pattern)
+      if (match) {
+        statusCode = parseInt(match[1])
+        break
+      }
     }
   }
   
