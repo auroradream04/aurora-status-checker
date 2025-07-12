@@ -40,6 +40,7 @@ export default function DashboardPage() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [refreshingMonitors, setRefreshingMonitors] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const handleScroll = () => {
@@ -68,6 +69,8 @@ export default function DashboardPage() {
 
   const handleRefreshAll = async () => {
     setIsRefreshing(true)
+    // Mark all monitors as refreshing
+    setRefreshingMonitors(new Set(monitors.map(m => m.id)))
     try {
       const response = await fetch('/api/monitors/check-all', { method: 'POST' })
       if (!response.ok) {
@@ -78,6 +81,26 @@ export default function DashboardPage() {
       setError(err instanceof Error ? err.message : 'Failed to refresh monitors')
     } finally {
       setIsRefreshing(false)
+      setRefreshingMonitors(new Set())
+    }
+  }
+
+  const handleRefreshMonitor = async (monitorId: string) => {
+    setRefreshingMonitors(prev => new Set([...prev, monitorId]))
+    try {
+      const response = await fetch(`/api/monitors/${monitorId}/check`, { method: 'POST' })
+      if (!response.ok) {
+        throw new Error('Failed to refresh monitor')
+      }
+      await fetchMonitors()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh monitor')
+    } finally {
+      setRefreshingMonitors(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(monitorId)
+        return newSet
+      })
     }
   }
 
@@ -256,9 +279,19 @@ export default function DashboardPage() {
                 return (
                   <div
                     key={monitor.id}
-                    className="p-4 glass rounded-md hover:glass-strong hover:bg-white/[0.03] transition-all duration-300 cursor-pointer group"
+                    className="p-4 glass rounded-md hover:glass-strong hover:bg-white/[0.03] transition-all duration-300 cursor-pointer group relative"
                     onClick={() => router.push(`/dashboard/monitors/${monitor.id}`)}
                   >
+                    {/* Refresh overlay when loading */}
+                    {refreshingMonitors.has(monitor.id) && (
+                      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-md flex items-center justify-center z-10">
+                        <div className="flex items-center gap-2 text-accent">
+                          <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-xs font-medium">Checking...</span>
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="flex items-center gap-3 mb-3">
                       <StatusIndicator status={status} />
                       <div className="flex-1 min-w-0">
@@ -279,6 +312,21 @@ export default function DashboardPage() {
                         </div>
                         <div className="text-xs text-text-muted group-hover:text-text-secondary transition-colors truncate">{monitor.url}</div>
                       </div>
+                      
+                      {/* Individual refresh button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleRefreshMonitor(monitor.id)
+                        }}
+                        disabled={refreshingMonitors.has(monitor.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-accent/10 text-text-muted hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Refresh this monitor"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </button>
                     </div>
                     
                     <div className="text-xs text-right">
