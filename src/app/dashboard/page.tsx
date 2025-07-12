@@ -15,6 +15,11 @@ interface Monitor {
   interval: number
   createdAt: string
   updatedAt: string
+  category?: {
+    id: string
+    name: string
+    color: string
+  }
   checks: Array<{
     id: string
     status: 'UP' | 'DOWN' | 'WARNING'
@@ -257,7 +262,21 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-3 mb-3">
                       <StatusIndicator status={status} />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-text-primary group-hover:text-white transition-colors truncate">{monitor.name}</div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="text-sm font-medium text-text-primary group-hover:text-white transition-colors truncate">{monitor.name}</div>
+                          {monitor.category && (
+                            <span 
+                              className="px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide"
+                              style={{ 
+                                backgroundColor: `${monitor.category.color}20`,
+                                color: monitor.category.color,
+                                border: `1px solid ${monitor.category.color}30`
+                              }}
+                            >
+                              {monitor.category.name}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-text-muted group-hover:text-text-secondary transition-colors truncate">{monitor.url}</div>
                       </div>
                     </div>
