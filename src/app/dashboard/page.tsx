@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
-import { Button } from '../../../components/ui/button'
+import Link from 'next/link'
 import { StatusIndicator } from '../../../components/monitors/status-indicator'
 import { Modal } from '../../../components/ui/modal'
 import { AddMonitorForm } from '../../../components/monitors/add-monitor-form'
@@ -32,15 +31,26 @@ export default function DashboardPage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [error, setError] = useState('')
+  const [isScrolled, setIsScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const fetchMonitors = async () => {
     try {
       const response = await fetch('/api/monitors')
       if (!response.ok) {
-        throw new Error('Failed to fetch monitors')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `API Error: ${response.status}`)
       }
       const data = await response.json()
       setMonitors(data)
+      setError('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch monitors')
     } finally {
@@ -55,7 +65,7 @@ export default function DashboardPage() {
       if (!response.ok) {
         throw new Error('Failed to refresh monitors')
       }
-      await fetchMonitors() // Refresh the data
+      await fetchMonitors()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to refresh monitors')
     } finally {
@@ -65,7 +75,7 @@ export default function DashboardPage() {
 
   const handleAddSuccess = () => {
     setShowAddModal(false)
-    fetchMonitors() // Refresh the data
+    fetchMonitors()
   }
 
   useEffect(() => {
@@ -83,100 +93,87 @@ export default function DashboardPage() {
   const upCount = monitors.filter(m => getLatestStatus(m) === 'UP').length
   const warningCount = monitors.filter(m => getLatestStatus(m) === 'WARNING').length
   const downCount = monitors.filter(m => getLatestStatus(m) === 'DOWN').length
-  const totalCount = monitors.length
 
   return (
-    <div className="space-y-8">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-primary">Dashboard</h1>
-          <p className="text-text-secondary mt-1">Monitor your websites and services</p>
+      <div className={`sticky top-0 z-50 transition-all duration-300 ${
+        isScrolled ? 'header-solid' : 'header-transparent'
+      }`}>
+        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-accent rounded-md flex items-center justify-center" style={{ boxShadow: 'var(--glow-accent-soft)' }}>
+              <div className="w-2 h-2 bg-white rounded-sm"></div>
+            </div>
+            <h1 className="text-sm text-text-primary font-medium tracking-tight">Aurora Status</h1>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleRefreshAll}
+              disabled={isRefreshing}
+              className="btn btn-ghost text-xs px-2 py-1 h-7 transition-all"
+            >
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="btn btn-primary text-xs px-2.5 py-1 h-7 transition-all"
+            >
+              Add Monitor
+            </button>
+          </div>
         </div>
-        <Button onClick={() => setShowAddModal(true)}>Add Monitor</Button>
       </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="text-sm text-error bg-error/10 border border-error/20 rounded-md p-3">
-          {error}
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 p-4 bg-error/10 border border-error/20 rounded-lg">
+            <div className="text-sm text-error">{error}</div>
+          </div>
+        )}
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="glass rounded-lg p-6 hover:glass-strong transition-all duration-300 border-l-2 border-success/30">
+            <div className="text-xs text-text-muted mb-3 font-medium tracking-wide uppercase">Online</div>
+            <div className="text-3xl font-bold text-success">{upCount}</div>
+          </div>
+          <div className="glass rounded-lg p-6 hover:glass-strong transition-all duration-300 border-l-2 border-warning/30">
+            <div className="text-xs text-text-muted mb-3 font-medium tracking-wide uppercase">Issues</div>
+            <div className="text-3xl font-bold text-warning">{warningCount}</div>
+          </div>
+          <div className="glass rounded-lg p-6 hover:glass-strong transition-all duration-300 border-l-2 border-error/30">
+            <div className="text-xs text-text-muted mb-3 font-medium tracking-wide uppercase">Offline</div>
+            <div className="text-3xl font-bold text-error">{downCount}</div>
+          </div>
         </div>
-      )}
 
-      {/* Loading State */}
-      {isLoading && (
-        <div className="text-center py-8">
-          <p className="text-text-secondary">Loading monitors...</p>
-        </div>
-      )}
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Total Monitors
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">{totalCount}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Online
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">{upCount}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Issues
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-warning">
-              {warningCount}
+        {/* Monitors */}
+        <div className="glass rounded-lg p-5">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-base text-text-primary font-medium tracking-tight">Monitors</h2>
+            <div className="text-xs text-text-muted font-medium">
+              {monitors.length} total
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Offline
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-error">
-              {downCount}
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="w-5 h-5 bg-accent rounded-full animate-pulse mx-auto"></div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Monitors */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Monitor Status</CardTitle>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefreshAll}
-            disabled={isRefreshing}
-          >
-            {isRefreshing ? 'Refreshing...' : 'Refresh All'}
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {!isLoading && (
-            <div className="space-y-4">
+          ) : monitors.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-text-secondary mb-3 text-sm">No monitors yet</div>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="btn btn-primary text-xs px-4 py-2"
+              >
+                Add your first monitor
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
               {monitors.map((monitor) => {
                 const status = getLatestStatus(monitor)
                 const responseTime = getLatestResponseTime(monitor)
@@ -185,49 +182,32 @@ export default function DashboardPage() {
                 return (
                   <div
                     key={monitor.id}
-                    className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-surface transition-colors"
+                    className="p-4 glass rounded-md hover:glass-strong hover:bg-white/[0.03] transition-all duration-300 cursor-pointer group"
+                    onClick={() => router.push(`/dashboard/monitors/${monitor.id}`)}
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 mb-3">
                       <StatusIndicator status={status} />
-                      <div>
-                        <h3 className="font-medium text-text-primary">{monitor.name}</h3>
-                        <p className="text-sm text-text-secondary">{monitor.url}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-text-primary group-hover:text-white transition-colors truncate">{monitor.name}</div>
+                        <div className="text-xs text-text-muted group-hover:text-text-secondary transition-colors truncate">{monitor.url}</div>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-6 text-sm">
-                      <div className="text-right">
-                        <div className="text-text-primary">
-                          {responseTime ? `${responseTime}ms` : 'N/A'}
-                        </div>
-                        <div className="text-text-secondary">
-                          {lastCheck ? lastCheck.toLocaleTimeString() : 'Never checked'}
-                        </div>
+                    <div className="text-xs text-right">
+                      <div className="text-text-primary font-medium group-hover:text-white transition-colors">
+                        {responseTime ? `${responseTime}ms` : '—'}
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => router.push(`/dashboard/monitors/${monitor.id}`)}
-                      >
-                        Details
-                      </Button>
+                      <div className="text-text-muted group-hover:text-text-secondary transition-colors">
+                        {lastCheck ? lastCheck.toLocaleTimeString() : 'Never'}
+                      </div>
                     </div>
                   </div>
                 )
               })}
             </div>
           )}
-          
-          {!isLoading && monitors.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-text-secondary">No monitors yet</p>
-              <Button className="mt-4" onClick={() => setShowAddModal(true)}>
-                Add Your First Monitor
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Add Monitor Modal */}
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)}>

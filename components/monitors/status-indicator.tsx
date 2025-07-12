@@ -15,22 +15,22 @@ export function StatusIndicator({
 }: StatusIndicatorProps) {
   const statusConfig = {
     UP: { 
-      color: 'bg-success', 
+      color: 'bg-success status-online', 
       label: 'Online',
       icon: '●'
     },
     WARNING: { 
-      color: 'bg-warning', 
+      color: 'bg-warning status-warning', 
       label: 'Issues',
       icon: '●'
     },
     DOWN: { 
-      color: 'bg-error', 
+      color: 'bg-error status-error', 
       label: 'Offline',
       icon: '●'
     },
     UNKNOWN: { 
-      color: 'bg-gray-400', 
+      color: 'bg-surface border border-border', 
       label: 'Unknown',
       icon: '●'
     }
@@ -47,15 +47,15 @@ export function StatusIndicator({
   return (
     <div className={`inline-flex items-center gap-2 ${className}`}>
       <div 
-        className={`rounded-full ${config.color} ${sizes[size]} flex items-center justify-center`}
+        className={`rounded-full ${config.color} ${sizes[size]} flex items-center justify-center transition-all duration-300`}
         title={config.label}
       >
-        <span className="text-white text-[8px] leading-none">
+        <span className="text-white text-[8px] leading-none font-bold">
           {config.icon}
         </span>
       </div>
       {showLabel && (
-        <span className={`font-medium ${sizes[size]}`}>
+        <span className={`font-medium ${sizes[size]} text-text-primary`}>
           {config.label}
         </span>
       )}

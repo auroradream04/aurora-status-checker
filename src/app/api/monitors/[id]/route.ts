@@ -28,7 +28,7 @@ export async function GET(
       include: {
         checks: {
           orderBy: { checkedAt: 'desc' },
-          take: 10
+          take: 50
         }
       }
     })
@@ -37,7 +37,13 @@ export async function GET(
       return NextResponse.json({ error: 'Monitor not found' }, { status: 404 })
     }
 
-    return NextResponse.json(monitor)
+    // Convert interval from seconds to minutes for frontend display
+    const monitorWithMinutes = {
+      ...monitor,
+      interval: Math.round(monitor.interval / 60)
+    }
+
+    return NextResponse.json(monitorWithMinutes)
   } catch (error) {
     console.error('Error fetching monitor:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -77,10 +83,16 @@ export async function PUT(
       return NextResponse.json({ error: 'Monitor not found' }, { status: 404 })
     }
 
+    // Convert interval from minutes to seconds if provided
+    const updateData = { ...result.data }
+    if (updateData.interval) {
+      updateData.interval = updateData.interval * 60
+    }
+
     // Update the monitor
     const monitor = await prisma.monitor.update({
       where: { id },
-      data: result.data,
+      data: updateData,
       include: {
         checks: {
           orderBy: { checkedAt: 'desc' },
@@ -89,7 +101,13 @@ export async function PUT(
       }
     })
 
-    return NextResponse.json(monitor)
+    // Convert back to minutes for response
+    const monitorWithMinutes = {
+      ...monitor,
+      interval: Math.round(monitor.interval / 60)
+    }
+
+    return NextResponse.json(monitorWithMinutes)
   } catch (error) {
     console.error('Error updating monitor:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

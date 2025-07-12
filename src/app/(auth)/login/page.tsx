@@ -4,9 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '../../../../lib/supabase-client'
-import { Button } from '../../../../components/ui/button'
-import { Input } from '../../../../components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -41,62 +38,69 @@ export default function LoginPage() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-2xl text-center">Sign In</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <div className="glass-strong p-8 w-full max-w-md rounded-xl">
+        <div className="text-center mb-8">
+          <div className="w-8 h-8 bg-accent rounded-lg mx-auto mb-4 flex items-center justify-center glow-accent">
+            <div className="w-4 h-4 bg-white rounded-sm"></div>
+          </div>
+          <h1 className="text-xl text-text-primary mb-2 tracking-tight">Sign In</h1>
+          <p className="text-sm text-text-secondary">Access your monitors</p>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium text-text-primary">
+            <label htmlFor="email" className="text-xs text-text-secondary font-medium tracking-wide uppercase">
               Email
             </label>
-            <Input
+            <input
               id="email"
               type="email"
               placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className="input"
               required
             />
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium text-text-primary">
+            <label htmlFor="password" className="text-xs text-text-secondary font-medium tracking-wide uppercase">
               Password
             </label>
-            <Input
+            <input
               id="password"
               type="password"
               placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              className="input"
               required
             />
           </div>
 
           {error && (
-            <div className="text-sm text-error bg-error/10 border border-error/20 rounded-md p-3">
-              {error}
+            <div className="p-3 bg-error/10 border border-error/20 rounded-lg">
+              <div className="text-xs text-error">{error}</div>
             </div>
           )}
 
-          <Button 
+          <button 
             type="submit" 
-            className="w-full" 
+            className="btn btn-primary w-full py-3" 
             disabled={isLoading}
           >
             {isLoading ? 'Signing In...' : 'Sign In'}
-          </Button>
+          </button>
         </form>
 
-        <div className="mt-6 text-center text-sm">
-          <span className="text-text-secondary">Don&apos;t have an account? </span>
-          <Link href="/register" className="text-secondary hover:underline font-medium">
+        <div className="mt-6 text-center">
+          <span className="text-xs text-text-secondary">Don&apos;t have an account? </span>
+          <Link href="/register" className="text-xs text-accent hover:text-accent-hover font-medium transition-colors">
             Sign up
           </Link>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

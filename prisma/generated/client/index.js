@@ -187,7 +187,7 @@ const config = {
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
-    "rootEnvPath": "../../../.env",
+    "rootEnvPath": null,
     "schemaEnvPath": "../../../.env"
   },
   "relativePath": "../..",
@@ -197,7 +197,6 @@ const config = {
     "db"
   ],
   "activeProvider": "postgresql",
-  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {
@@ -206,8 +205,8 @@ const config = {
       }
     }
   },
-  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"./generated/client\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\n// User management (synced with Supabase Auth)\nmodel User {\n  id        String    @id // Supabase Auth UUID\n  email     String    @unique\n  name      String?\n  createdAt DateTime  @default(now())\n  updatedAt DateTime  @updatedAt\n  monitors  Monitor[]\n\n  @@map(\"users\")\n}\n\n// Website monitors\nmodel Monitor {\n  id        String     @id @default(cuid())\n  name      String\n  url       String\n  interval  Int        @default(1800) // 30 minutes in seconds\n  isActive  Boolean    @default(true)\n  userId    String\n  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)\n  checks    Check[]\n  incidents Incident[]\n  createdAt DateTime   @default(now())\n  updatedAt DateTime   @updatedAt\n\n  @@index([userId])\n  @@index([isActive])\n  @@map(\"monitors\")\n}\n\n// Status check results\nmodel Check {\n  id           String      @id @default(cuid())\n  monitorId    String\n  monitor      Monitor     @relation(fields: [monitorId], references: [id], onDelete: Cascade)\n  status       CheckStatus\n  statusCode   Int?\n  responseTime Int? // milliseconds\n  error        String?\n  checkedAt    DateTime    @default(now())\n\n  @@index([monitorId, checkedAt])\n  @@map(\"checks\")\n}\n\n// Incident tracking\nmodel Incident {\n  id         String    @id @default(cuid())\n  monitorId  String\n  monitor    Monitor   @relation(fields: [monitorId], references: [id], onDelete: Cascade)\n  startedAt  DateTime  @default(now())\n  resolvedAt DateTime?\n  status     String // \"ongoing\", \"resolved\"\n  checks     String[] // Array of check IDs related to this incident\n\n  @@index([monitorId, status])\n  @@map(\"incidents\")\n}\n\nenum CheckStatus {\n  UP\n  DOWN\n  WARNING\n  UNKNOWN\n}\n",
-  "inlineSchemaHash": "bb8b9cd0ea42a2c434b7744709af37449ded8b88831bab33600742da6be71761",
+  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"./generated/client\"\n}\n\ndatasource db {\n  provider  = \"postgresql\"\n  url       = env(\"DATABASE_URL\")\n  directUrl = env(\"DIRECT_URL\")\n}\n\n// User management (synced with Supabase Auth)\nmodel User {\n  id        String    @id // Supabase Auth UUID\n  email     String    @unique\n  name      String?\n  createdAt DateTime  @default(now())\n  updatedAt DateTime  @updatedAt\n  monitors  Monitor[]\n\n  @@map(\"users\")\n}\n\n// Website monitors\nmodel Monitor {\n  id        String     @id @default(cuid())\n  name      String\n  url       String\n  interval  Int        @default(1800) // 30 minutes in seconds\n  isActive  Boolean    @default(true)\n  userId    String\n  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)\n  checks    Check[]\n  incidents Incident[]\n  createdAt DateTime   @default(now())\n  updatedAt DateTime   @updatedAt\n\n  @@index([userId])\n  @@index([isActive])\n  @@map(\"monitors\")\n}\n\n// Status check results\nmodel Check {\n  id           String      @id @default(cuid())\n  monitorId    String\n  monitor      Monitor     @relation(fields: [monitorId], references: [id], onDelete: Cascade)\n  status       CheckStatus\n  statusCode   Int?\n  responseTime Int? // milliseconds\n  error        String?\n  checkedAt    DateTime    @default(now())\n\n  @@index([monitorId, checkedAt])\n  @@map(\"checks\")\n}\n\n// Incident tracking\nmodel Incident {\n  id         String    @id @default(cuid())\n  monitorId  String\n  monitor    Monitor   @relation(fields: [monitorId], references: [id], onDelete: Cascade)\n  startedAt  DateTime  @default(now())\n  resolvedAt DateTime?\n  status     String // \"ongoing\", \"resolved\"\n  checks     String[] // Array of check IDs related to this incident\n\n  @@index([monitorId, status])\n  @@map(\"incidents\")\n}\n\nenum CheckStatus {\n  UP\n  DOWN\n  WARNING\n  UNKNOWN\n}\n",
+  "inlineSchemaHash": "4a32f43629667064858979c32746141e9f4f3431caec388d589577461a356893",
   "copyEngine": true
 }
 

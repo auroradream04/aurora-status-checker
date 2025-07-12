@@ -6,7 +6,7 @@ import { z } from 'zod'
 const createMonitorSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   url: z.string().url('Valid URL is required'),
-  interval: z.number().min(1).max(60).default(30),
+  interval: z.number().min(1).max(60).default(30), // minutes, will convert to seconds
 })
 
 export async function GET() {
@@ -40,7 +40,13 @@ export async function GET() {
       }
     })
 
-    return NextResponse.json(monitors)
+    // Convert intervals from seconds to minutes for frontend display
+    const monitorsWithMinutes = monitors.map(monitor => ({
+      ...monitor,
+      interval: Math.round(monitor.interval / 60)
+    }))
+
+    return NextResponse.json(monitorsWithMinutes)
   } catch (error) {
     console.error('Error fetching monitors:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -75,7 +81,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: validatedData.name,
         url: validatedData.url,
-        interval: validatedData.interval,
+        interval: validatedData.interval * 60, // Convert minutes to seconds
         userId: dbUser.id,
       }
     })
