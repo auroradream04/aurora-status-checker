@@ -11,6 +11,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const [showAddModal, setShowAddModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [refreshingMonitors, setRefreshingMonitors] = useState<Set<string>>(new Set())
 
   // React Query hooks
@@ -58,11 +59,21 @@ export default function DashboardPage() {
     return monitor.checks?.[0]?.responseTime || null
   }
 
-  // Filter monitors based on search term
-  const filteredMonitors = monitors.filter(monitor => 
-    monitor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    monitor.url.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Get unique categories
+  const categories = Array.from(
+    new Set(monitors.map(m => m.category?.name).filter(Boolean))
+  ).sort()
+
+  // Filter monitors based on search term and category
+  const filteredMonitors = monitors.filter(monitor => {
+    const matchesSearch = monitor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      monitor.url.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesCategory = selectedCategory === 'all' || 
+      monitor.category?.name === selectedCategory
+    
+    return matchesSearch && matchesCategory
+  })
 
   const upCount = monitors.filter(m => getLatestStatus(m) === 'UP').length
   const warningCount = monitors.filter(m => getLatestStatus(m) === 'WARNING').length
@@ -120,9 +131,9 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Search Bar */}
-          <div className="mb-5">
-            <div className="relative">
+          {/* Search and Filter Bar */}
+          <div className="mb-5 flex gap-3">
+            <div className="relative flex-1">
               <input
                 type="text"
                 placeholder="Search monitors by name or URL..."
@@ -136,6 +147,27 @@ export default function DashboardPage() {
                 </svg>
               </div>
             </div>
+            
+            {/* Category Filter */}
+            <div className="relative">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all duration-200 appearance-none cursor-pointer min-w-[140px]"
+              >
+                <option value="all">All Categories</option>
+                {categories.map(category => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                <svg className="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {isLoading ? (
@@ -143,15 +175,30 @@ export default function DashboardPage() {
               <div className="w-5 h-5 bg-accent rounded-full animate-pulse mx-auto"></div>
             </div>
           ) : filteredMonitors.length === 0 ? (
-            searchTerm ? (
+            searchTerm || selectedCategory !== 'all' ? (
               <div className="text-center py-8">
-                <div className="text-text-secondary mb-3 text-sm">No monitors found matching &ldquo;{searchTerm}&rdquo;</div>
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="text-xs text-accent hover:text-accent/80 font-medium"
-                >
-                  Clear search
-                </button>
+                <div className="text-text-secondary mb-3 text-sm">
+                  No monitors found{searchTerm && ` matching "${searchTerm}"`}
+                  {selectedCategory !== 'all' && ` in category "${selectedCategory}"`}
+                </div>
+                <div className="flex gap-2 justify-center">
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm('')}
+                      className="text-xs text-accent hover:text-accent/80 font-medium"
+                    >
+                      Clear search
+                    </button>
+                  )}
+                  {selectedCategory !== 'all' && (
+                    <button
+                      onClick={() => setSelectedCategory('all')}
+                      className="text-xs text-accent hover:text-accent/80 font-medium"
+                    >
+                      Show all categories
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="text-center py-8">
