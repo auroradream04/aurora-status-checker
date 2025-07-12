@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '../../../../lib/supabase-client'
+import { Logo } from '../../../../components/ui/logo'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -40,11 +41,11 @@ export default function LoginPage() {
   return (
     <div className="glass-strong p-8 w-full rounded-xl">
       <div className="text-center mb-8">
-        <div className="w-8 h-8 bg-accent rounded-lg mx-auto mb-4 flex items-center justify-center glow-accent">
-          <div className="w-4 h-4 bg-white rounded-sm"></div>
+        <div className="flex justify-center mb-6">
+          <Logo size="lg" variant="horizontal" />
         </div>
-        <h1 className="text-xl text-text-primary mb-2 tracking-tight">Sign In</h1>
-        <p className="text-sm text-text-secondary">Access your monitors</p>
+        <h2 className="text-xl text-text-primary mb-2 tracking-tight">Sign In</h2>
+        <p className="text-sm text-text-secondary">Welcome back</p>
       </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

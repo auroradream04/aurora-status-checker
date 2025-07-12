@@ -6,6 +6,7 @@ import { StatusIndicator } from '../../../components/monitors/status-indicator'
 import { Modal } from '../../../components/ui/modal'
 import { AddMonitorForm } from '../../../components/monitors/add-monitor-form'
 import { createClient } from '../../../lib/supabase-client'
+import { Logo } from '../../../components/ui/logo'
 
 interface Monitor {
   id: string
@@ -130,12 +131,7 @@ export default function DashboardPage() {
         isScrolled ? 'header-solid' : 'header-transparent'
       }`}>
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-6 h-6 bg-accent rounded-md flex items-center justify-center" style={{ boxShadow: 'var(--glow-accent-soft)' }}>
-              <div className="w-3 h-3 bg-white rounded-sm"></div>
-            </div>
-            <h1 className="text-base text-text-primary font-medium tracking-tight">Aurora Status</h1>
-          </div>
+          <Logo size="md" variant="horizontal" />
           <div className="flex items-center gap-3">
             <button className="text-sm text-text-secondary hover:text-text-primary transition-colors font-medium">
               Account
