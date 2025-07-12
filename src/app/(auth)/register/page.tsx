@@ -58,15 +58,14 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="glass-strong p-8 w-full max-w-md rounded-xl">
-        <div className="text-center mb-8">
-          <div className="w-8 h-8 bg-accent rounded-lg mx-auto mb-4 flex items-center justify-center glow-accent">
-            <div className="w-4 h-4 bg-white rounded-sm"></div>
-          </div>
-          <h1 className="text-xl text-text-primary mb-2 tracking-tight">Sign Up</h1>
-          <p className="text-sm text-text-secondary">Create your account</p>
+    <div className="glass-strong p-8 w-full rounded-xl">
+      <div className="text-center mb-8">
+        <div className="w-8 h-8 bg-accent rounded-lg mx-auto mb-4 flex items-center justify-center glow-accent">
+          <div className="w-4 h-4 bg-white rounded-sm"></div>
         </div>
+        <h1 className="text-xl text-text-primary mb-2 tracking-tight">Sign Up</h1>
+        <p className="text-sm text-text-secondary">Create your account</p>
+      </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -135,12 +134,11 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <span className="text-xs text-text-secondary">Already have an account? </span>
-          <Link href="/login" className="text-xs text-accent hover:text-accent-hover font-medium transition-colors">
-            Sign in
-          </Link>
-        </div>
+      <div className="mt-6 text-center">
+        <span className="text-xs text-text-secondary">Already have an account? </span>
+        <Link href="/login" className="text-xs text-accent hover:text-accent-hover font-medium transition-colors">
+          Sign in
+        </Link>
       </div>
     </div>
   )

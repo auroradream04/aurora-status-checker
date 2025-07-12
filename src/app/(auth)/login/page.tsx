@@ -38,15 +38,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="glass-strong p-8 w-full max-w-md rounded-xl">
-        <div className="text-center mb-8">
-          <div className="w-8 h-8 bg-accent rounded-lg mx-auto mb-4 flex items-center justify-center glow-accent">
-            <div className="w-4 h-4 bg-white rounded-sm"></div>
-          </div>
-          <h1 className="text-xl text-text-primary mb-2 tracking-tight">Sign In</h1>
-          <p className="text-sm text-text-secondary">Access your monitors</p>
+    <div className="glass-strong p-8 w-full rounded-xl">
+      <div className="text-center mb-8">
+        <div className="w-8 h-8 bg-accent rounded-lg mx-auto mb-4 flex items-center justify-center glow-accent">
+          <div className="w-4 h-4 bg-white rounded-sm"></div>
         </div>
+        <h1 className="text-xl text-text-primary mb-2 tracking-tight">Sign In</h1>
+        <p className="text-sm text-text-secondary">Access your monitors</p>
+      </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -94,12 +93,11 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <span className="text-xs text-text-secondary">Don&apos;t have an account? </span>
-          <Link href="/register" className="text-xs text-accent hover:text-accent-hover font-medium transition-colors">
-            Sign up
-          </Link>
-        </div>
+      <div className="mt-6 text-center">
+        <span className="text-xs text-text-secondary">Don&apos;t have an account? </span>
+        <Link href="/register" className="text-xs text-accent hover:text-accent-hover font-medium transition-colors">
+          Sign up
+        </Link>
       </div>
     </div>
   )
