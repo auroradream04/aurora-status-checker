@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 
@@ -9,8 +10,12 @@ export default function Home() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-primary">Aurora Status</h1>
           <nav className="flex gap-4">
-            <Button variant="ghost">Login</Button>
-            <Button>Get Started</Button>
+            <Link href="/login">
+              <Button variant="ghost">Login</Button>
+            </Link>
+            <Link href="/register">
+              <Button>Get Started</Button>
+            </Link>
           </nav>
         </div>
       </header>
@@ -26,7 +31,9 @@ export default function Home() {
           Get instant alerts when issues occur.
         </p>
         <div className="flex gap-4 justify-center">
-          <Button size="lg">Start Monitoring</Button>
+          <Link href="/register">
+            <Button size="lg">Start Monitoring</Button>
+          </Link>
           <Button variant="outline" size="lg">Learn More</Button>
         </div>
       </section>

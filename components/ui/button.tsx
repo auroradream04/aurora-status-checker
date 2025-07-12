@@ -22,11 +22,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       md: 'h-10 px-4',
       lg: 'h-12 px-6 text-lg'
     }
+
+    const classNames = `${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`
     
     return (
       <button
         ref={ref}
-        className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+        className={classNames}
         {...props}
       >
         {children}
