@@ -1,7 +1,7 @@
 import { CheckStatus } from '../../prisma/generated/client'
 
 interface StatusIndicatorProps {
-  status: CheckStatus
+  status: CheckStatus | 'UNKNOWN'
   size?: 'sm' | 'md' | 'lg'
   showLabel?: boolean
   className?: string
