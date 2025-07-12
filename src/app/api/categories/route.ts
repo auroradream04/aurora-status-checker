@@ -3,11 +3,9 @@ import { getUser } from '../../../../lib/supabase-server'
 import { prisma } from '../../../../lib/prisma'
 import { z } from 'zod'
 
-const createMonitorSchema = z.object({
+const createCategorySchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  url: z.string().url('Valid URL is required'),
-  interval: z.number().min(1).max(60).default(30), // minutes, will convert to seconds
-  categoryId: z.string().optional().nullable(),
+  color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Valid hex color is required'),
 })
 
 export async function GET() {
@@ -31,26 +29,14 @@ export async function GET() {
       })
     }
 
-    const monitors = await prisma.monitor.findMany({
+    const categories = await prisma.category.findMany({
       where: { userId: dbUser.id },
-      include: {
-        checks: {
-          orderBy: { checkedAt: 'desc' },
-          take: 1
-        },
-        category: true
-      }
+      orderBy: { name: 'asc' }
     })
 
-    // Convert intervals from seconds to minutes for frontend display
-    const monitorsWithMinutes = monitors.map(monitor => ({
-      ...monitor,
-      interval: Math.round(monitor.interval / 60)
-    }))
-
-    return NextResponse.json(monitorsWithMinutes)
+    return NextResponse.json(categories)
   } catch (error) {
-    console.error('Error fetching monitors:', error)
+    console.error('Error fetching categories:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -63,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const validatedData = createMonitorSchema.parse(body)
+    const validatedData = createCategorySchema.parse(body)
 
     // Find user in Prisma or create if not exists
     let dbUser = await prisma.user.findUnique({
@@ -79,22 +65,20 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const monitor = await prisma.monitor.create({
+    const category = await prisma.category.create({
       data: {
         name: validatedData.name,
-        url: validatedData.url,
-        interval: validatedData.interval * 60, // Convert minutes to seconds
+        color: validatedData.color,
         userId: dbUser.id,
-        categoryId: validatedData.categoryId || null,
       }
     })
 
-    return NextResponse.json(monitor, { status: 201 })
+    return NextResponse.json(category, { status: 201 })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 })
     }
-    console.error('Error creating monitor:', error)
+    console.error('Error creating category:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

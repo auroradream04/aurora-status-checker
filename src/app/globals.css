@@ -59,6 +59,18 @@
   box-sizing: border-box;
 }
 
+/* Ensure all buttons and clickable elements have pointer cursor */
+button,
+[type="button"],
+[type="submit"],
+[type="reset"],
+select,
+.btn,
+a[href],
+[role="button"] {
+  cursor: pointer;
+}
+
 body {
   background: var(--background);
   color: var(--text-primary);
