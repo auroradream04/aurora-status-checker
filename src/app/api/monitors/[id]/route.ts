@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unstable_cache, revalidateTag } from 'next/cache'
 import { getUser } from '../../../../../lib/supabase-server'
 import { prisma } from '../../../../../lib/prisma'
 import { z } from 'zod'
@@ -8,6 +9,38 @@ const updateMonitorSchema = z.object({
   url: z.string().url('Please enter a valid URL').optional(),
   interval: z.number().min(1, 'Interval must be at least 1 minute').max(60, 'Interval must be less than 60 minutes').optional(),
 })
+
+// Cached function to fetch a single monitor
+const getCachedMonitor = unstable_cache(
+  async (id: string, userEmail: string) => {
+    const monitor = await prisma.monitor.findFirst({
+      where: { 
+        id,
+        user: { email: userEmail }
+      },
+      include: {
+        checks: {
+          orderBy: { checkedAt: 'desc' },
+          take: 50
+        },
+        category: true
+      }
+    })
+
+    if (!monitor) return null
+
+    // Convert interval from seconds to minutes for frontend display
+    return {
+      ...monitor,
+      interval: Math.round(monitor.interval / 60)
+    }
+  },
+  ['monitor'],
+  {
+    revalidate: 15, // Cache for 15 seconds
+    tags: ['monitor']
+  }
+)
 
 export async function GET(
   request: NextRequest,
@@ -20,30 +53,13 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const monitor = await prisma.monitor.findFirst({
-      where: { 
-        id,
-        user: { email: user.email! }
-      },
-      include: {
-        checks: {
-          orderBy: { checkedAt: 'desc' },
-          take: 50
-        }
-      }
-    })
+    const monitor = await getCachedMonitor(id, user.email!)
 
     if (!monitor) {
       return NextResponse.json({ error: 'Monitor not found' }, { status: 404 })
     }
 
-    // Convert interval from seconds to minutes for frontend display
-    const monitorWithMinutes = {
-      ...monitor,
-      interval: Math.round(monitor.interval / 60)
-    }
-
-    return NextResponse.json(monitorWithMinutes)
+    return NextResponse.json(monitor)
   } catch (error) {
     console.error('Error fetching monitor:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -107,6 +123,10 @@ export async function PUT(
       interval: Math.round(monitor.interval / 60)
     }
 
+    // Invalidate cache after update
+    revalidateTag('monitors')
+    revalidateTag('monitor')
+
     return NextResponse.json(monitorWithMinutes)
   } catch (error) {
     console.error('Error updating monitor:', error)
@@ -135,6 +155,10 @@ export async function DELETE(
     if (result.count === 0) {
       return NextResponse.json({ error: 'Monitor not found' }, { status: 404 })
     }
+
+    // Invalidate cache after deletion
+    revalidateTag('monitors')
+    revalidateTag('monitor')
 
     return NextResponse.json({ message: 'Monitor deleted successfully' })
   } catch (error) {

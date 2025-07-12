@@ -1,74 +1,31 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { StatusIndicator } from '../../../components/monitors/status-indicator'
 import { Modal } from '../../../components/ui/modal'
 import { AddMonitorForm } from '../../../components/monitors/add-monitor-form'
-
-interface Monitor {
-  id: string
-  name: string
-  url: string
-  interval: number
-  createdAt: string
-  updatedAt: string
-  category?: {
-    id: string
-    name: string
-    color: string
-  }
-  checks: Array<{
-    id: string
-    status: 'UP' | 'DOWN' | 'WARNING'
-    responseTime?: number
-    statusCode?: number
-    error?: string
-    checkedAt: string
-  }>
-}
+import { useMonitors, useRefreshMonitor, useRefreshAllMonitors, type Monitor } from '../../../lib/hooks/use-monitors'
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [monitors, setMonitors] = useState<Monitor[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [refreshingMonitors, setRefreshingMonitors] = useState<Set<string>>(new Set())
 
-  const fetchMonitors = async () => {
-    try {
-      const response = await fetch('/api/monitors')
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `API Error: ${response.status}`)
-      }
-      const data = await response.json()
-      setMonitors(data)
-      setError('')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch monitors')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  // React Query hooks
+  const { data: monitors = [], isLoading, error } = useMonitors()
+  const refreshAllMutation = useRefreshAllMonitors()
+  const refreshMonitorMutation = useRefreshMonitor()
 
   const handleRefreshAll = async () => {
-    setIsRefreshing(true)
     // Mark all monitors as refreshing
     setRefreshingMonitors(new Set(monitors.map(m => m.id)))
     try {
-      const response = await fetch('/api/monitors/check-all', { method: 'POST' })
-      if (!response.ok) {
-        throw new Error('Failed to refresh monitors')
-      }
-      await fetchMonitors()
+      await refreshAllMutation.mutateAsync()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to refresh monitors')
+      console.error('Failed to refresh monitors:', err)
     } finally {
-      setIsRefreshing(false)
       setRefreshingMonitors(new Set())
     }
   }
@@ -76,13 +33,9 @@ export default function DashboardPage() {
   const handleRefreshMonitor = async (monitorId: string) => {
     setRefreshingMonitors(prev => new Set([...prev, monitorId]))
     try {
-      const response = await fetch(`/api/monitors/${monitorId}/check`, { method: 'POST' })
-      if (!response.ok) {
-        throw new Error('Failed to refresh monitor')
-      }
-      await fetchMonitors()
+      await refreshMonitorMutation.mutateAsync(monitorId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to refresh monitor')
+      console.error('Failed to refresh monitor:', err)
     } finally {
       setRefreshingMonitors(prev => {
         const newSet = new Set(prev)
@@ -94,13 +47,8 @@ export default function DashboardPage() {
 
   const handleAddSuccess = () => {
     setShowAddModal(false)
-    fetchMonitors()
+    // React Query will automatically refetch the data
   }
-
-
-  useEffect(() => {
-    fetchMonitors()
-  }, [])
 
   const getLatestStatus = (monitor: Monitor) => {
     return monitor.checks?.[0]?.status || 'UNKNOWN'
@@ -126,7 +74,7 @@ export default function DashboardPage() {
         {/* Error Display */}
         {error && (
           <div className="mb-6 p-4 bg-error/10 border border-error/20 rounded-lg">
-            <div className="text-sm text-error">{error}</div>
+            <div className="text-sm text-error">{error.message || 'An error occurred'}</div>
           </div>
         )}
 
@@ -157,10 +105,10 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleRefreshAll}
-                  disabled={isRefreshing}
+                  disabled={refreshAllMutation.isPending}
                   className="btn btn-ghost text-xs px-3 py-1.5 h-8 transition-all"
                 >
-                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                  {refreshAllMutation.isPending ? 'Refreshing...' : 'Refresh'}
                 </button>
                 <button
                   onClick={() => setShowAddModal(true)}

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { getUser } from '../../../../../../lib/supabase-server'
 import { prisma } from '../../../../../../lib/prisma'
 
@@ -44,6 +45,10 @@ export async function POST(
       where: { id: monitor.id },
       data: { updatedAt: new Date() }
     })
+
+    // Invalidate cache after status check
+    revalidateTag('monitors')
+    revalidateTag('monitor')
 
     return NextResponse.json({
       check,

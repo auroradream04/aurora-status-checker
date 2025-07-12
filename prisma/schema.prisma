@@ -75,6 +75,8 @@ model Check {
   checkedAt    DateTime    @default(now())
   
   @@index([monitorId, checkedAt])
+  @@index([checkedAt])  // For time-based queries across all checks
+  @@index([status, checkedAt])  // For status filtering with time ordering
   @@map("checks")
 }
 

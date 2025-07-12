@@ -1,32 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { StatusIndicator } from '../../../../../components/monitors/status-indicator'
 import { Modal } from '../../../../../components/ui/modal'
 import { EditMonitorForm } from '../../../../../components/monitors/edit-monitor-form'
-
-interface Monitor {
-  id: string
-  name: string
-  url: string
-  interval: number
-  createdAt: string
-  updatedAt: string
-  category?: {
-    id: string
-    name: string
-    color: string
-  }
-  checks: Array<{
-    id: string
-    status: 'UP' | 'DOWN' | 'WARNING'
-    responseTime?: number
-    statusCode?: number
-    error?: string
-    checkedAt: string
-  }>
-}
+import { useMonitor, useRefreshMonitor, useDeleteMonitor } from '../../../../../lib/hooks/use-monitors'
 
 // Helper function to format error messages for better readability
 function formatErrorMessage(error: string): string {
@@ -95,46 +74,18 @@ export default function MonitorDetailPage() {
   const router = useRouter()
   const monitorId = params.id as string
 
-  const [monitor, setMonitor] = useState<Monitor | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [error, setError] = useState('')
 
-  const fetchMonitor = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/monitors/${monitorId}`)
-      if (!response.ok) {
-        if (response.status === 404) {
-          router.push('/dashboard/monitors')
-          return
-        }
-        throw new Error('Failed to fetch monitor')
-      }
-      const data = await response.json()
-      setMonitor(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch monitor')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [monitorId, router])
+  // React Query hooks
+  const { data: monitor, isLoading, error } = useMonitor(monitorId)
+  const refreshMutation = useRefreshMonitor()
+  const deleteMutation = useDeleteMonitor()
 
   const handleRefreshMonitor = async () => {
-    setIsRefreshing(true)
     try {
-      const response = await fetch(`/api/monitors/${monitorId}/check`, { 
-        method: 'POST' 
-      })
-      if (!response.ok) {
-        throw new Error('Failed to refresh monitor')
-      }
-      await fetchMonitor() // Refresh the data
+      await refreshMutation.mutateAsync(monitorId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to refresh monitor')
-    } finally {
-      setIsRefreshing(false)
+      console.error('Failed to refresh monitor:', err)
     }
   }
 
@@ -143,29 +94,18 @@ export default function MonitorDetailPage() {
       return
     }
 
-    setIsDeleting(true)
     try {
-      const response = await fetch(`/api/monitors/${monitorId}`, { 
-        method: 'DELETE' 
-      })
-      if (!response.ok) {
-        throw new Error('Failed to delete monitor')
-      }
+      await deleteMutation.mutateAsync(monitorId)
       router.push('/dashboard')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete monitor')
-      setIsDeleting(false)
+      console.error('Failed to delete monitor:', err)
     }
   }
 
   const handleEditSuccess = () => {
     setShowEditModal(false)
-    fetchMonitor() // Refresh the data
+    // React Query will automatically refetch the data
   }
-
-  useEffect(() => {
-    fetchMonitor()
-  }, [monitorId, fetchMonitor])
 
   const getLatestStatus = () => {
     return monitor?.checks?.[0]?.status || 'UNKNOWN'
@@ -208,7 +148,7 @@ export default function MonitorDetailPage() {
     )
   }
 
-  if (error || !monitor) {
+  if (error || (!isLoading && !monitor)) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="space-y-6">
@@ -222,12 +162,16 @@ export default function MonitorDetailPage() {
           </div>
           <div className="glass rounded-lg p-6">
             <div className="text-sm text-error">
-              {error || 'Monitor not found'}
+              {(error as Error)?.message || 'Monitor not found'}
             </div>
           </div>
         </div>
       </div>
     )
+  }
+
+  if (!monitor) {
+    return null // This should never happen after the above check, but satisfies TypeScript
   }
 
   const status = getLatestStatus()
@@ -281,10 +225,10 @@ export default function MonitorDetailPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleRefreshMonitor}
-            disabled={isRefreshing}
+            disabled={refreshMutation.isPending}
             className="btn btn-ghost text-xs px-3 py-1.5 h-8 transition-all disabled:opacity-50"
           >
-            {isRefreshing ? 'Checking...' : 'Check Now'}
+            {refreshMutation.isPending ? 'Checking...' : 'Check Now'}
           </button>
           <button
             onClick={() => setShowEditModal(true)}
@@ -294,19 +238,26 @@ export default function MonitorDetailPage() {
           </button>
           <button
             onClick={handleDeleteMonitor}
-            disabled={isDeleting}
+            disabled={deleteMutation.isPending}
             className="btn btn-ghost text-xs px-3 py-1.5 h-8 transition-all text-error hover:text-error disabled:opacity-50"
           >
-            {isDeleting ? 'Deleting...' : 'Delete'}
+            {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
           </button>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Error Display */}
-        {error && (
+        {/* Refresh Error Display */}
+        {refreshMutation.error && (
           <div className="mb-6 p-4 bg-error/10 border border-error/20 rounded-lg">
-            <div className="text-sm text-error">{error}</div>
+            <div className="text-sm text-error">{(refreshMutation.error as Error)?.message || 'Failed to refresh monitor'}</div>
+          </div>
+        )}
+
+        {/* Delete Error Display */}
+        {deleteMutation.error && (
+          <div className="mb-6 p-4 bg-error/10 border border-error/20 rounded-lg">
+            <div className="text-sm text-error">{(deleteMutation.error as Error)?.message || 'Failed to delete monitor'}</div>
           </div>
         )}
 
@@ -493,10 +444,10 @@ export default function MonitorDetailPage() {
               <div className="text-text-secondary mb-3 text-sm">No checks performed yet</div>
               <button
                 onClick={handleRefreshMonitor}
-                disabled={isRefreshing}
+                disabled={refreshMutation.isPending}
                 className="bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 text-white text-xs px-3 py-1.5 rounded-md font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg shadow-accent/20 disabled:opacity-50"
               >
-                {isRefreshing ? 'Checking...' : 'Run first check'}
+                {refreshMutation.isPending ? 'Checking...' : 'Run first check'}
               </button>
             </div>
           )}

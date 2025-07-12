@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unstable_cache, revalidateTag } from 'next/cache'
 import { getUser } from '../../../../lib/supabase-server'
 import { prisma } from '../../../../lib/prisma'
 import { z } from 'zod'
@@ -9,6 +10,33 @@ const createMonitorSchema = z.object({
   interval: z.number().min(1).max(60).default(30), // minutes, will convert to seconds
   categoryId: z.string().optional().nullable(),
 })
+
+// Cached function to fetch monitors for a user
+const getCachedMonitors = unstable_cache(
+  async (userId: string) => {
+    const monitors = await prisma.monitor.findMany({
+      where: { userId },
+      include: {
+        checks: {
+          orderBy: { checkedAt: 'desc' },
+          take: 1
+        },
+        category: true
+      }
+    })
+
+    // Convert intervals from seconds to minutes for frontend display
+    return monitors.map(monitor => ({
+      ...monitor,
+      interval: Math.round(monitor.interval / 60)
+    }))
+  },
+  ['monitors'],
+  {
+    revalidate: 30, // Cache for 30 seconds
+    tags: ['monitors']
+  }
+)
 
 export async function GET() {
   try {
@@ -31,24 +59,8 @@ export async function GET() {
       })
     }
 
-    const monitors = await prisma.monitor.findMany({
-      where: { userId: dbUser.id },
-      include: {
-        checks: {
-          orderBy: { checkedAt: 'desc' },
-          take: 1
-        },
-        category: true
-      }
-    })
-
-    // Convert intervals from seconds to minutes for frontend display
-    const monitorsWithMinutes = monitors.map(monitor => ({
-      ...monitor,
-      interval: Math.round(monitor.interval / 60)
-    }))
-
-    return NextResponse.json(monitorsWithMinutes)
+    const monitors = await getCachedMonitors(dbUser.id)
+    return NextResponse.json(monitors)
   } catch (error) {
     console.error('Error fetching monitors:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -88,6 +100,9 @@ export async function POST(request: NextRequest) {
         categoryId: validatedData.categoryId || null,
       }
     })
+
+    // Invalidate cache after creation
+    revalidateTag('monitors')
 
     return NextResponse.json(monitor, { status: 201 })
   } catch (error) {

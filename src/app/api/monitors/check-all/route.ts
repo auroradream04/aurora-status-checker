@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { getUser } from '../../../../../lib/supabase-server'
 import { prisma } from '../../../../../lib/prisma'
 
@@ -59,6 +60,10 @@ export async function POST() {
     
     const successCount = results.filter(r => r.success).length
     const errorCount = results.filter(r => !r.success).length
+
+    // Invalidate cache after batch check
+    revalidateTag('monitors')
+    revalidateTag('monitor')
 
     return NextResponse.json({
       message: `Checked ${monitors.length} monitors`,
