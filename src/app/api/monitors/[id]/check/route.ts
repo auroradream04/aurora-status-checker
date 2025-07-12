@@ -62,7 +62,13 @@ async function performStatusCheck(url: string) {
   const startTime = Date.now()
   
   try {
-    const response = await fetch(url, {
+    // Normalize URL - ensure it has a protocol
+    let normalizedUrl = url.trim()
+    if (!normalizedUrl.match(/^https?:\/\//)) {
+      normalizedUrl = `https://${normalizedUrl}`
+    }
+    
+    const response = await fetch(normalizedUrl, {
       method: 'GET',
       headers: {
         'User-Agent': 'Aurora Status Checker/1.0',
@@ -120,6 +126,11 @@ async function performStatusCheck(url: string) {
         message.includes('protocol') ||
         message.includes('unable to verify') ||
         message.includes('hostname mismatch') ||
+        // Mixed content and protocol issues
+        message.includes('mixed content') ||
+        message.includes('insecure request') ||
+        message.includes('protocol error') ||
+        message.includes('fetch failed') ||
         // HTTP errors that indicate server is responding but with issues
         message.includes('404') ||
         message.includes('403') ||

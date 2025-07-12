@@ -209,7 +209,15 @@ export default function MonitorDetailPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-text-secondary">{monitor.url}</p>
+                <a 
+                  href={monitor.url.match(/^https?:\/\//) ? monitor.url : `https://${monitor.url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-text-secondary hover:text-accent transition-colors cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {monitor.url}
+                </a>
               </div>
             </div>
           </div>
@@ -299,7 +307,14 @@ export default function MonitorDetailPage() {
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-border/30">
                   <span className="text-xs text-text-secondary font-medium uppercase tracking-wide">URL</span>
-                  <span className="text-sm text-text-primary font-medium truncate max-w-xs">{monitor.url}</span>
+                  <a 
+                    href={monitor.url.match(/^https?:\/\//) ? monitor.url : `https://${monitor.url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-accent hover:text-accent/80 font-medium truncate max-w-xs transition-colors"
+                  >
+                    {monitor.url}
+                  </a>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-border/30">
                   <span className="text-xs text-text-secondary font-medium uppercase tracking-wide">Interval</span>
