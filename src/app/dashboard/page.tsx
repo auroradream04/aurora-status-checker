@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [error, setError] = useState('')
   const [isScrolled, setIsScrolled] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     const handleScroll = () => {
@@ -88,6 +89,12 @@ export default function DashboardPage() {
   const getLatestResponseTime = (monitor: Monitor) => {
     return monitor.checks?.[0]?.responseTime || null
   }
+
+  // Filter monitors based on search term
+  const filteredMonitors = monitors.filter(monitor => 
+    monitor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    monitor.url.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   const upCount = monitors.filter(m => getLatestStatus(m) === 'UP').length
   const warningCount = monitors.filter(m => getLatestStatus(m) === 'WARNING').length
@@ -147,7 +154,7 @@ export default function DashboardPage() {
             <h2 className="text-base text-text-primary font-medium tracking-tight">Monitors</h2>
             <div className="flex items-center gap-3">
               <div className="text-xs text-text-muted font-medium">
-                {monitors.length} total
+                {filteredMonitors.length} of {monitors.length} total
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -167,23 +174,53 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Search Bar */}
+          <div className="mb-5">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search monitors by name or URL..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all duration-200"
+              />
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <svg className="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
           {isLoading ? (
             <div className="text-center py-8">
               <div className="w-5 h-5 bg-accent rounded-full animate-pulse mx-auto"></div>
             </div>
-          ) : monitors.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-text-secondary mb-3 text-sm">No monitors yet</div>
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 text-white text-xs px-3 py-1.5 rounded-md font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg shadow-accent/20"
-              >
-                Add your first monitor
-              </button>
-            </div>
+          ) : filteredMonitors.length === 0 ? (
+            searchTerm ? (
+              <div className="text-center py-8">
+                <div className="text-text-secondary mb-3 text-sm">No monitors found matching &ldquo;{searchTerm}&rdquo;</div>
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="text-xs text-accent hover:text-accent/80 font-medium"
+                >
+                  Clear search
+                </button>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-text-secondary mb-3 text-sm">No monitors yet</div>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 text-white text-xs px-3 py-1.5 rounded-md font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg shadow-accent/20"
+                >
+                  Add your first monitor
+                </button>
+              </div>
+            )
           ) : (
             <div className="grid grid-cols-3 gap-3">
-              {monitors.map((monitor) => {
+              {filteredMonitors.map((monitor) => {
                 const status = getLatestStatus(monitor)
                 const responseTime = getLatestResponseTime(monitor)
                 const lastCheck = monitor.updatedAt ? new Date(monitor.updatedAt) : null

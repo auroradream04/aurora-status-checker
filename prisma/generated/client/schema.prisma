@@ -14,32 +14,52 @@ datasource db {
 
 // User management (synced with Supabase Auth)
 model User {
-  id        String    @id // Supabase Auth UUID
-  email     String    @unique
-  name      String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  monitors  Monitor[]
+  id         String     @id // Supabase Auth UUID
+  email      String     @unique
+  name       String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  monitors   Monitor[]
+  categories Category[]
 
   @@map("users")
 }
 
+// Monitor categories for organization
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  color     String? // Hex color for UI theming
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitors  Monitor[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("categories")
+}
+
 // Website monitors
 model Monitor {
-  id        String     @id @default(cuid())
-  name      String
-  url       String
-  interval  Int        @default(1800) // 30 minutes in seconds
-  isActive  Boolean    @default(true)
-  userId    String
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  checks    Check[]
-  incidents Incident[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id         String     @id @default(cuid())
+  name       String
+  url        String
+  interval   Int        @default(1800) // 30 minutes in seconds
+  isActive   Boolean    @default(true)
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId String?
+  category   Category?  @relation(fields: [categoryId], references: [id])
+  checks     Check[]
+  incidents  Incident[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
   @@index([userId])
   @@index([isActive])
+  @@index([categoryId])
   @@map("monitors")
 }
 

@@ -128,6 +128,15 @@ exports.Prisma.UserScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.CategoryScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  color: 'color',
+  userId: 'userId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.MonitorScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -135,6 +144,7 @@ exports.Prisma.MonitorScalarFieldEnum = {
   interval: 'interval',
   isActive: 'isActive',
   userId: 'userId',
+  categoryId: 'categoryId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -181,6 +191,7 @@ exports.CheckStatus = exports.$Enums.CheckStatus = {
 
 exports.Prisma.ModelName = {
   User: 'User',
+  Category: 'Category',
   Monitor: 'Monitor',
   Check: 'Check',
   Incident: 'Incident'
